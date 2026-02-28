@@ -4,6 +4,12 @@ Use this repository to produce visual QA proofs of UI work.
 
 ## Preferred Workflow
 
+Install once:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/AchilleasDrakou/agent-recorder/main/install.sh | bash
+```
+
 Use the wrapper tool:
 
 ```bash

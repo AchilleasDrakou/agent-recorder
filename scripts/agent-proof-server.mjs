@@ -11,8 +11,26 @@ const { values } = parseArgs({
     host: { type: "string", default: "127.0.0.1" },
     port: { type: "string", default: "8788" },
     "out-dir": { type: "string", default: "./proofs/api" },
+    help: { type: "boolean", short: "h", default: false },
   },
 });
+
+if (values.help) {
+  console.log(`Usage:
+  node scripts/agent-proof-server.mjs [--host 127.0.0.1] [--port 8788] [--out-dir ./proofs/api]
+
+Optional auth:
+  export AGENT_PROOF_API_TOKEN="replace-me"
+
+Endpoints:
+  GET    /health
+  GET    /proof-runs
+  POST   /proof-runs
+  GET    /proof-runs/:id
+  DELETE /proof-runs/:id
+`);
+  process.exit(0);
+}
 
 const host = values.host;
 const port = Number.parseInt(values.port, 10);

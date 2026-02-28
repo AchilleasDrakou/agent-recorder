@@ -4,6 +4,21 @@ Headless browser video recorder for AI QA workflows. It records a page to MP4 us
 
 Started as a Node.js recorder, then we rebuilt the core in Rust for better performance, and added thin agent wrappers (`agent-proof` CLI + local API) on top.
 
+## Install (agent-friendly)
+
+One-liner (local setup):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/AchilleasDrakou/agent-recorder/main/install.sh | bash
+```
+
+This installs:
+- `agent-recorder`
+- `agent-proof`
+- `agent-proof-server`
+
+Install script source: `./install.sh`
+
 ## Quick start
 
 ```bash

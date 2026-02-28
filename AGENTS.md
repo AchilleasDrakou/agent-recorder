@@ -4,6 +4,12 @@ Record headless browser sessions to MP4 for visual QA. Use this as proof that UI
 
 ## Default Agent Path
 
+If not installed yet:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/AchilleasDrakou/agent-recorder/main/install.sh | bash
+```
+
 Use the thin agent wrapper:
 
 ```bash
