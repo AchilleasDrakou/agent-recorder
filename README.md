@@ -1,91 +1,78 @@
-# Agent Recorder
+# Agent Recorder (Rust)
 
-Lightweight headless browser video recorder built for AI agent QA. Records browser sessions to MP4 using Chrome DevTools Protocol screencast + FFmpeg.
+Headless browser video recorder for AI QA workflows. It records a page to MP4 using Chrome DevTools Protocol screencast frames piped into FFmpeg.
 
-**Built for agents, not humans.** Agents use this to visually prove their work — before/after videos of UI changes, login flows, form submissions.
+Started as a Node.js recorder, then we rebuilt the core in Rust for better performance, and added thin agent wrappers (`agent-proof` CLI + local API) on top.
 
-## Why
-
-Screenshots are static. Videos show the full story. When an AI agent makes UI changes, a 5-second video is worth more than a paragraph of explanation.
-
-- **~20KB/sec** at 720p 10fps — tiny files, easy to attach to PRs
-- **Headless** — no display needed, runs on any server
-- **Simple** — one command, one dependency (puppeteer-core), uses system Chrome + FFmpeg
-
-## Quick Start
+## Quick start
 
 ```bash
-git clone https://github.com/AchilleasDrakou/agent-recorder.git
-cd agent-recorder && npm install
-
-# Record any URL
-node record.mjs --url "http://localhost:3000" --output demo.mp4 --duration 10
+cargo run -- \
+  --url "http://localhost:3000" \
+  --output ./recording.mp4 \
+  --duration 10
 ```
 
 ## Requirements
 
-- Node.js 20+
-- Chrome or Chromium
+- Rust 1.89+
+- Chrome/Chromium
 - FFmpeg
 
-## Usage
+## CLI options
 
 ```bash
-node record.mjs \
-  --url <url>           # URL to record (required)
-  --output <file.mp4>   # Output path (default: recording.mp4)
-  --duration <seconds>  # Recording duration (default: 10)
-  --width <px>          # Viewport width (default: 1280)
-  --height <px>         # Viewport height (default: 720)
-  --fps <n>             # Frames per second (default: 10)
-  --chrome <path>       # Chrome binary (default: /usr/bin/chromium)
-  --script <file.js>    # JS to execute during recording
+cargo run -- \
+  --url <url> \
+  --output <file.mp4> \
+  --duration <seconds> \
+  --width <px> \
+  --height <px> \
+  --fps <n> \
+  --chrome <path> \
+  --ffmpeg <path> \
+  --encoder <name|auto> \
+  --video-bitrate <rate> \
+  --maxrate <rate> \
+  --bufsize <rate> \
+  --jpeg-quality <1-100> \
+  --script <file.js>
 ```
 
-## Before/After Pattern
+- `--url` (required)
+- `--output` default `recording.mp4`
+- `--duration` default `10`
+- `--width` default `1280`
+- `--height` default `720`
+- `--fps` default `10`
+- `--chrome` default `/usr/bin/chromium`
+- `--ffmpeg` default `ffmpeg`
+- `--encoder` default `auto` (macOS prefers `h264_videotoolbox`)
+- `--video-bitrate` optional target bitrate (e.g. `1200k`)
+- `--maxrate` optional max bitrate for hardware encoders
+- `--bufsize` optional encoder buffer size for hardware encoders
+- `--jpeg-quality` default `90`
+- `--script` optional JS evaluated on the page
+- `--ws-endpoint` optional existing CDP websocket endpoint (useful for tests)
 
-The main use case — visually validate UI changes:
+## Testing
 
 ```bash
-# 1. Record before
-node record.mjs --url http://localhost:3000/page --output before.mp4 --duration 5
-
-# 2. Make changes, deploy
-
-# 3. Record after
-node record.mjs --url http://localhost:3000/page --output after.mp4 --duration 5
-
-# 4. Attach both to PR
+cargo test
 ```
 
-## Interactive Recording
+Includes an end-to-end integration test with a mocked CDP websocket + fake ffmpeg process.
 
-For flows that require login, clicking, typing — write a custom Puppeteer script. See `demo-login.mjs` for an example that:
+## Performance (Node vs Rust)
 
-1. Navigates to a login page
-2. Types a password
-3. Submits the form
-4. Records the authenticated dashboard
-5. Scrolls through content
+Side-by-side benchmark run with `scripts/benchmark-side-by-side.sh`:
 
-## How It Works
+- Runs per implementation: `5`
+- Duration per run: `3s`
+- Resolution: `640x360 @ 8fps`
+- Chrome binary: `Chromium 147.0.7708.0`
 
-1. Launches headless Chromium via puppeteer-core
-2. Starts CDP [`Page.startScreencast`](https://chromedevtools.github.io/devtools-protocol/tot/Page/#method-startScreencast) to capture JPEG frames
-3. Pipes frames to FFmpeg which encodes H.264 MP4
-4. Forces minor repaints to ensure consistent frame capture on static pages
-
-## Output
-
-- **Format:** H.264 MP4 (yuv420p, faststart)
-- **Size:** ~20KB/sec at 720p 10fps
-- **No audio** (Chrome screencast limitation)
-
-## Agent Docs
-
-- `AGENTS.md` — Quick reference for any agent
-- `CLAUDE.md` — Detailed instructions for Claude Code / Codex agents
-
-## License
-
-MIT
+| Impl | Cold Start (s) | Avg Total (s) | Avg CPU (s) | Peak RSS (MiB) | Avg Output (KiB) | Avg Effective FPS |
+|---|---:|---:|---:|---:|---:|---:|
+| node | 6.050 | 5.972 | 1.772 | 199.11 | 5.29 | 8.000 |
+| rust | 4.420 | 4.180 | 0.782 | 198.36 | 5.48 | 8.000 |

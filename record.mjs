@@ -17,6 +17,10 @@
  *   --fps        Target FPS (default: 10, keeps files small)
  *   --script     Optional JS file to execute during recording (for interactions)
  *   --chrome     Path to Chrome/Chromium binary
+ *   --ffmpeg     FFmpeg binary path (default: ffmpeg)
+ *   --encoder    auto|libx264|h264_videotoolbox|h264_nvenc|h264_vaapi|h264_qsv
+ *   --video-bitrate, --maxrate, --bufsize   Optional encoder rate control values
+ *   --jpeg-quality Screencast JPEG quality (1-100, default: 90)
  */
 
 import puppeteer from 'puppeteer-core';
@@ -25,12 +29,170 @@ import { readFile } from 'fs/promises';
 import { once } from 'events';
 import { parseArgs } from 'util';
 
+const ENCODER_CHOICES = new Set([
+  'auto',
+  'libx264',
+  'h264_videotoolbox',
+  'h264_nvenc',
+  'h264_vaapi',
+  'h264_qsv',
+]);
+
 function parseIntegerArg(name, rawValue, { min, max }) {
   const parsed = Number.parseInt(rawValue, 10);
   if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
     throw new Error(`--${name} must be an integer between ${min} and ${max}. Received "${rawValue}".`);
   }
   return parsed;
+}
+
+function parseEncoderArg(rawValue) {
+  const normalized = String(rawValue ?? '').trim().toLowerCase();
+  if (!ENCODER_CHOICES.has(normalized)) {
+    throw new Error(`--encoder must be one of: ${Array.from(ENCODER_CHOICES).join(', ')}`);
+  }
+  return normalized;
+}
+
+function parseBitrateToKbps(value) {
+  const match = String(value ?? '').trim().toLowerCase().match(/^(\d+)([kmg]?)$/);
+  if (!match) return null;
+  const amount = Number.parseInt(match[1], 10);
+  const unit = match[2];
+  if (unit === 'm') return amount * 1000;
+  if (unit === 'g') return amount * 1000 * 1000;
+  return amount;
+}
+
+function formatKbps(kbps) {
+  return `${Math.max(1, Math.round(kbps))}k`;
+}
+
+function defaultBitrateKbps(width, height, fps) {
+  const pixelsPerSecond = width * height * fps;
+  if (pixelsPerSecond <= 3_000_000) return 1200;
+  if (pixelsPerSecond <= 14_000_000) return 3000;
+  if (pixelsPerSecond <= 40_000_000) return 8000;
+  return 12000;
+}
+
+function resolveRateControl(width, height, fps, args) {
+  const bitrate = args['video-bitrate']?.trim() || formatKbps(defaultBitrateKbps(width, height, fps));
+  const parsedKbps = parseBitrateToKbps(bitrate);
+  if (parsedKbps === null) {
+    return {
+      bitrate,
+      maxrate: args.maxrate?.trim() || bitrate,
+      bufsize: args.bufsize?.trim() || bitrate,
+    };
+  }
+  return {
+    bitrate,
+    maxrate: args.maxrate?.trim() || formatKbps(parsedKbps * 1.5),
+    bufsize: args.bufsize?.trim() || formatKbps(parsedKbps * 2),
+  };
+}
+
+function buildFfmpegArgs({ fps, output, encoder, rateControl, vaapiDevice }) {
+  const args = [
+    '-y',
+    '-f', 'image2pipe',
+    '-framerate', String(fps),
+    '-i', '-',
+  ];
+
+  const gop = String(Math.max(1, Math.round(fps * 2)));
+
+  if (encoder === 'h264_videotoolbox') {
+    args.push(
+      '-c:v', 'h264_videotoolbox',
+      '-profile:v', 'high',
+      '-realtime', 'true',
+      '-b:v', rateControl.bitrate,
+      '-maxrate', rateControl.maxrate,
+      '-bufsize', rateControl.bufsize,
+      '-g', gop,
+      '-pix_fmt', 'yuv420p',
+    );
+  } else if (encoder === 'h264_nvenc') {
+    args.push(
+      '-c:v', 'h264_nvenc',
+      '-preset', 'p5',
+      '-b:v', rateControl.bitrate,
+      '-maxrate', rateControl.maxrate,
+      '-bufsize', rateControl.bufsize,
+      '-g', gop,
+      '-pix_fmt', 'yuv420p',
+    );
+  } else if (encoder === 'h264_vaapi') {
+    args.push(
+      '-vaapi_device', vaapiDevice,
+      '-vf', 'format=nv12,hwupload',
+      '-c:v', 'h264_vaapi',
+      '-profile:v', 'high',
+      '-b:v', rateControl.bitrate,
+      '-maxrate', rateControl.maxrate,
+      '-bufsize', rateControl.bufsize,
+      '-g', gop,
+      '-pix_fmt', 'yuv420p',
+    );
+  } else if (encoder === 'h264_qsv') {
+    args.push(
+      '-c:v', 'h264_qsv',
+      '-b:v', rateControl.bitrate,
+      '-maxrate', rateControl.maxrate,
+      '-bufsize', rateControl.bufsize,
+      '-g', gop,
+      '-pix_fmt', 'yuv420p',
+    );
+  } else {
+    args.push(
+      '-c:v', 'libx264',
+      '-preset', 'fast',
+      '-crf', '21',
+      '-g', gop,
+      '-pix_fmt', 'yuv420p',
+    );
+  }
+
+  args.push('-movflags', '+faststart', output);
+  return args;
+}
+
+async function readFfmpegEncoders(ffmpegBinary) {
+  return await new Promise((resolve, reject) => {
+    let output = '';
+    const child = spawn(ffmpegBinary, ['-hide_banner', '-encoders'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    child.stdout.on('data', (chunk) => { output += chunk.toString(); });
+    child.stderr.on('data', (chunk) => { output += chunk.toString(); });
+    child.once('error', reject);
+    child.once('close', () => resolve(output.toLowerCase()));
+  });
+}
+
+async function resolveEncoder(requested, ffmpegBinary) {
+  if (requested !== 'auto') return requested;
+
+  let encodersText = '';
+  try {
+    encodersText = await readFfmpegEncoders(ffmpegBinary);
+  } catch {
+    return 'libx264';
+  }
+
+  const available = (name) => encodersText.includes(name);
+  const ordered = process.platform === 'darwin'
+    ? ['h264_videotoolbox', 'libx264']
+    : ['h264_nvenc', 'h264_vaapi', 'h264_qsv', 'libx264'];
+
+  for (const candidate of ordered) {
+    if (candidate === 'libx264' || available(candidate)) {
+      return candidate;
+    }
+  }
+  return 'libx264';
 }
 
 function delay(ms, signal) {
@@ -96,6 +258,13 @@ async function main() {
       fps:      { type: 'string', default: '10' },
       script:   { type: 'string' },
       chrome:   { type: 'string', default: '/usr/bin/chromium' },
+      ffmpeg:   { type: 'string', default: 'ffmpeg' },
+      encoder:  { type: 'string', default: 'auto' },
+      'video-bitrate': { type: 'string' },
+      maxrate:  { type: 'string' },
+      bufsize:  { type: 'string' },
+      'vaapi-device': { type: 'string', default: '/dev/dri/renderD128' },
+      'jpeg-quality': { type: 'string', default: '90' },
     },
   });
 
@@ -111,6 +280,10 @@ async function main() {
   const height = parseIntegerArg('height', args.height, { min: 16, max: 4320 });
   const duration = parseIntegerArg('duration', args.duration, { min: 1, max: 7200 });
   const fps = parseIntegerArg('fps', args.fps, { min: 1, max: 60 });
+  const jpegQuality = parseIntegerArg('jpeg-quality', args['jpeg-quality'], { min: 1, max: 100 });
+  const requestedEncoder = parseEncoderArg(args.encoder);
+  const selectedEncoder = await resolveEncoder(requestedEncoder, args.ffmpeg);
+  const rateControl = resolveRateControl(width, height, fps, args);
 
   const abortController = new AbortController();
   const onSigint = () => {
@@ -139,7 +312,7 @@ async function main() {
   let screencastStarted = false;
   let mainError;
 
-  console.log(`Recording ${args.url} → ${args.output} (${width}x${height}, ${duration}s, ${fps}fps)`);
+  console.log(`Recording ${args.url} → ${args.output} (${width}x${height}, ${duration}s, ${fps}fps, ${selectedEncoder})`);
 
   try {
     browser = await puppeteer.launch({
@@ -157,18 +330,17 @@ async function main() {
     const page = await browser.newPage();
     await page.setViewport({ width, height });
 
-    ffmpeg = spawn('ffmpeg', [
-      '-y',
-      '-f', 'image2pipe',
-      '-framerate', String(fps),
-      '-i', '-',
-      '-c:v', 'libx264',
-      '-pix_fmt', 'yuv420p',
-      '-preset', 'fast',
-      '-crf', '23',
-      '-movflags', '+faststart',
-      args.output,
-    ], { stdio: ['pipe', 'ignore', 'pipe'] });
+    ffmpeg = spawn(
+      args.ffmpeg,
+      buildFfmpegArgs({
+        fps,
+        output: args.output,
+        encoder: selectedEncoder,
+        rateControl,
+        vaapiDevice: args['vaapi-device'],
+      }),
+      { stdio: ['pipe', 'ignore', 'pipe'] },
+    );
 
     ffmpegExitPromise = createFfmpegExitPromise(ffmpeg);
     ffmpeg.stderr.on('data', (chunk) => {
@@ -212,7 +384,7 @@ async function main() {
 
     await cdp.send('Page.startScreencast', {
       format: 'jpeg',
-      quality: 80,
+      quality: jpegQuality,
       maxWidth: width,
       maxHeight: height,
       everyNthFrame: 1,

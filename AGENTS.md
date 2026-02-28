@@ -1,80 +1,128 @@
 # Agent Video Recorder
 
-Record headless browser sessions to MP4 for visual QA. Before/after videos prove your work actually works.
+Record headless browser sessions to MP4 for visual QA. Use this as proof that UI changes actually work.
 
-## Quick Start
+## Default Agent Path
 
-```bash
-node ~/tools/agent-recorder/record.mjs \
-  --url "http://localhost:3000" \
-  --output ./recording.mp4 \
-  --duration 10
-```
-
-## Options
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--url` | required | URL to record |
-| `--output` | `recording.mp4` | Output file path |
-| `--duration` | `10` | Seconds to record |
-| `--width` | `1280` | Viewport width |
-| `--height` | `720` | Viewport height |
-| `--fps` | `10` | Frames per second |
-| `--script` | none | JS file to run during recording |
-| `--chrome` | `/usr/bin/chromium` | Chrome/Chromium path |
-
-## Before/After Pattern
-
-For every UI task, record two videos:
+Use the thin agent wrapper:
 
 ```bash
-# 1. Record BEFORE state
-node ~/tools/agent-recorder/record.mjs \
+node ./scripts/agent-proof.mjs \
   --url "http://localhost:3000/page" \
-  --output ./before.mp4 \
-  --duration 5
-
-# 2. Make your changes, deploy to preview
-
-# 3. Record AFTER state
-node ~/tools/agent-recorder/record.mjs \
-  --url "http://localhost:3000/page" \
-  --output ./after.mp4 \
-  --duration 5
+  --mode before \
+  --name pricing-cta
 ```
 
-Attach both to the PR description.
-
-## Interactive Recording
-
-For login flows, form submissions, or click-throughs — write a Puppeteer script:
+Then after changes:
 
 ```bash
-node ~/tools/agent-recorder/record.mjs \
-  --url "http://localhost:3000/login" \
-  --output ./login-flow.mp4 \
-  --duration 15 \
-  --script ./login-actions.js
+node ./scripts/agent-proof.mjs \
+  --url "http://localhost:3000/page" \
+  --mode after \
+  --name pricing-cta
 ```
 
-The `--script` JS runs inside the page via `page.evaluate()`. For complex flows, write a custom recorder script (see `demo-login.mjs` for an example).
+The wrapper runs the Rust recorder, writes an MP4, and writes a sidecar JSON (`.proof.json`) with run metadata and ffprobe metrics.
 
-## Requirements
+## Local API (curl-friendly)
 
-- Node.js 20+
-- Chromium (`/usr/bin/chromium` or specify `--chrome`)
-- FFmpeg
+Start server:
 
-## How It Works
+```bash
+export AGENT_PROOF_API_TOKEN="replace-me"  # optional but recommended
+node ./scripts/agent-proof-server.mjs --port 8788
+```
 
-1. Launches headless Chromium
-2. Uses CDP `Page.startScreencast` to capture JPEG frames
-3. Pipes frames to FFmpeg which encodes to H.264 MP4
-4. Triggers minor repaints to ensure consistent frame capture on static pages
+Create a run:
 
-## Output
+```bash
+curl -sS -X POST "http://127.0.0.1:8788/proof-runs" \
+  -H "authorization: Bearer $AGENT_PROOF_API_TOKEN" \
+  -H "content-type: application/json" \
+  -d '{
+    "spec": {
+      "url": "http://localhost:3000/page",
+      "mode": "after",
+      "name": "pricing-cta",
+      "duration": 8
+    }
+  }'
+```
 
-- Format: H.264 MP4 (yuv420p)
-- Typical size: ~20KB/sec at 720p 10fps
-- No audio (Chrome screencast limitation)
+Poll run status:
+
+```bash
+curl -sS -H "authorization: Bearer $AGENT_PROOF_API_TOKEN" \
+  "http://127.0.0.1:8788/proof-runs/<run-id>"
+```
+
+Cancel a queued/running run:
+
+```bash
+curl -sS -X DELETE -H "authorization: Bearer $AGENT_PROOF_API_TOKEN" \
+  "http://127.0.0.1:8788/proof-runs/<run-id>"
+```
+
+Health:
+
+```bash
+curl -sS "http://127.0.0.1:8788/health"
+```
+
+## Dynamic Spec Mode
+
+Prefer `--spec` for agentic workflows:
+
+```json
+{
+  "url": "https://preview.example.com/pricing",
+  "mode": "after",
+  "name": "pricing-cta",
+  "goal": "Validate CTA visibility and click path after redesign",
+  "assertions": [
+    {"type": "text_visible", "value": "Start free trial"},
+    {"type": "clickable", "value": "primary CTA"}
+  ],
+  "duration": 10,
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "encoder": "auto"
+}
+```
+
+Run it:
+
+```bash
+node ./scripts/agent-proof.mjs --spec ./proof-spec.json
+```
+
+Notes:
+- `goal` and `assertions` are preserved in the sidecar file for downstream agent/reporting logic.
+- Use `--script` when interactions are required and cannot be covered by plain capture.
+
+## Direct Recorder (Fallback)
+
+If needed, run the Rust binary directly:
+
+```bash
+./target/debug/agent-recorder \
+  --url "http://localhost:3000/page" \
+  --output ./proof.mp4 \
+  --duration 8 \
+  --width 1280 \
+  --height 720 \
+  --fps 10 \
+  --encoder auto \
+  --jpeg-quality 90
+```
+
+## Practical Rules
+
+1. Record both `before` and `after` for UI changes.
+2. Keep videos short (`5-15s`) unless the flow is long.
+3. Prefer spec-driven runs for token efficiency.
+4. Use `--script` only when interaction is necessary.
+5. Return both artifact paths in agent output:
+- `<video>.mp4`
+- `<video>.mp4.proof.json`
