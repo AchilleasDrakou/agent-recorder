@@ -28,6 +28,56 @@ cargo run -- \
   --duration 10
 ```
 
+Agent-friendly wrapper:
+
+```bash
+node ./scripts/agent-proof.mjs \
+  --url "http://localhost:3000" \
+  --mode after \
+  --name homepage
+```
+
+## Action-driven recordings (no custom script required)
+
+`agent-proof` supports an `actions` array in `--spec` (or `--actions @file.json`) so agents can click/type/press/scroll dynamically without writing per-page scripts.
+
+Example:
+
+```json
+{
+  "url": "https://example.com",
+  "mode": "after",
+  "name": "signup-flow",
+  "profile": "efficient",
+  "actions": [
+    { "type": "click", "selector": "#email" },
+    { "type": "type", "selector": "#email", "text": "qa@example.com" },
+    { "type": "type", "selector": "#password", "text": "secret-pass" },
+    { "type": "click", "selector": "button[type='submit']" },
+    { "type": "wait_for", "containsText": "Welcome" }
+  ]
+}
+```
+
+Supported actions:
+- `wait`
+- `wait_for`
+- `click`
+- `type`
+- `press`
+- `focus`
+- `hover`
+- `scroll_by`
+- `scroll_to`
+- `toggle`
+- `select`
+- `evaluate`
+
+FPS/performance profiles:
+- `default` = `1280x720 @ 10fps`, `jpeg-quality 90`
+- `smooth` = `1280x720 @ 15fps`, `jpeg-quality 82`
+- `efficient` = `960x540 @ 15fps`, `jpeg-quality 78`
+
 ## Requirements
 
 - Rust 1.89+

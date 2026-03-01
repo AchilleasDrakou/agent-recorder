@@ -84,16 +84,19 @@ Prefer `--spec` for agentic workflows:
   "url": "https://preview.example.com/pricing",
   "mode": "after",
   "name": "pricing-cta",
+  "profile": "efficient",
   "goal": "Validate CTA visibility and click path after redesign",
   "assertions": [
     {"type": "text_visible", "value": "Start free trial"},
     {"type": "clickable", "value": "primary CTA"}
   ],
-  "duration": 10,
-  "width": 1280,
-  "height": 720,
-  "fps": 10,
-  "encoder": "auto"
+  "actions": [
+    {"type": "click", "selector": "[data-testid='hero-cta']"},
+    {"type": "type", "selector": "#email", "text": "qa@example.com"},
+    {"type": "press", "selector": "#email", "key": "Enter"},
+    {"type": "wait_for", "containsText": "Thanks for signing up"}
+  ],
+  "duration": 10
 }
 ```
 
@@ -105,7 +108,8 @@ node ./scripts/agent-proof.mjs --spec ./proof-spec.json
 
 Notes:
 - `goal` and `assertions` are preserved in the sidecar file for downstream agent/reporting logic.
-- Use `--script` when interactions are required and cannot be covered by plain capture.
+- `actions` is built in for generic interaction flows; only use `--script` for edge cases.
+- Profiles: `default` (`1280x720 @ 10fps`), `smooth` (`1280x720 @ 15fps`), `efficient` (`960x540 @ 15fps`).
 
 ## Direct Recorder (Fallback)
 

@@ -787,8 +787,10 @@ async fn run() -> Result<(), String> {
         let interval = Duration::from_millis((1000 / args.fps.max(1)) as u64);
         let mut ticks = tokio::time::interval(interval);
         let end_at = tokio::time::Instant::now() + Duration::from_secs(args.duration);
+        let max_frames = u64::from(args.duration) * u64::from(args.fps.max(1));
 
         let mut frame_count: u64 = 0;
+        let mut dropped_frames: u64 = 0;
         while tokio::time::Instant::now() < end_at {
             tokio::select! {
                 _ = ticks.tick() => {
@@ -802,6 +804,12 @@ async fn run() -> Result<(), String> {
                     ).await;
                 }
                 Some((frame_base64, session_id)) = frame_rx.recv() => {
+                    if frame_count >= max_frames {
+                        dropped_frames += 1;
+                        let _ = cdp.send("Page.screencastFrameAck", json!({"sessionId": session_id})).await;
+                        continue;
+                    }
+
                     frame_count += 1;
                     let frame = base64::engine::general_purpose::STANDARD
                         .decode(frame_base64)
@@ -860,6 +868,7 @@ async fn run() -> Result<(), String> {
         }
 
         println!("Captured {frame_count} frames");
+        println!("Dropped {dropped_frames} frames (throttled to target fps)");
         println!("✓ Saved to {}", args.output.display());
         Ok(())
     }

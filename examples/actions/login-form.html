@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agent Proof - Login Flow</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+        background: linear-gradient(160deg, #0f172a, #1e293b);
+        color: #0f172a;
+      }
+      .card {
+        width: min(420px, 92vw);
+        padding: 28px;
+        border-radius: 18px;
+        background: #f8fafc;
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+      }
+      h1 {
+        margin-top: 0;
+        margin-bottom: 4px;
+      }
+      p {
+        margin-top: 0;
+        margin-bottom: 20px;
+        color: #475569;
+      }
+      label {
+        display: block;
+        margin-top: 10px;
+        margin-bottom: 6px;
+        font-weight: 600;
+      }
+      input[type="email"],
+      input[type="password"] {
+        width: 100%;
+        box-sizing: border-box;
+        border-radius: 10px;
+        border: 1px solid #cbd5e1;
+        padding: 11px 12px;
+        font-size: 15px;
+      }
+      .row {
+        margin-top: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      button {
+        margin-top: 16px;
+        width: 100%;
+        border: 0;
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-size: 15px;
+        font-weight: 700;
+        background: #0ea5e9;
+        color: #fff;
+        cursor: pointer;
+      }
+      #status {
+        margin-top: 14px;
+        min-height: 22px;
+        font-weight: 700;
+      }
+      .ok {
+        color: #15803d;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="card">
+      <h1>Welcome back</h1>
+      <p>Sign in to continue to your workspace.</p>
+
+      <form id="login-form">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="off" />
+
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="off" />
+
+        <div class="row">
+          <input id="remember" type="checkbox" />
+          <label for="remember">Remember this device</label>
+        </div>
+
+        <button id="sign-in" type="submit">Sign in</button>
+      </form>
+
+      <div id="status" aria-live="polite"></div>
+    </section>
+
+    <script>
+      const form = document.querySelector("#login-form");
+      const status = document.querySelector("#status");
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        status.textContent = "Signing in...";
+        status.className = "";
+        setTimeout(() => {
+          status.textContent = "Signed in successfully";
+          status.className = "ok";
+        }, 450);
+      });
+    </script>
+  </body>
+</html>

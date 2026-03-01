@@ -1,0 +1,13 @@
+[
+  { "type": "wait", "ms": 500 },
+  { "type": "focus", "selector": "#task-input" },
+  { "type": "type", "selector": "#task-input", "text": "Review homepage hero video", "clear": true },
+  { "type": "press", "selector": "#task-input", "key": "Enter" },
+  { "type": "type", "selector": "#task-input", "text": "Ship action DSL", "clear": true },
+  { "type": "press", "selector": "#task-input", "key": "Enter" },
+  { "type": "select", "selector": "#priority", "value": "high" },
+  { "type": "toggle", "selector": "#notify-team", "value": true },
+  { "type": "click", "selector": "#add-task" },
+  { "type": "wait_for", "containsText": "3 tasks", "timeoutMs": 3000 },
+  { "type": "wait", "ms": 900 }
+]

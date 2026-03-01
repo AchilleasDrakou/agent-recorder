@@ -1,0 +1,10 @@
+[
+  { "type": "wait", "ms": 500 },
+  { "type": "hover", "selector": "#menu-trigger" },
+  { "type": "scroll_by", "y": 760, "ms": 700 },
+  { "type": "scroll_by", "y": 760, "ms": 700 },
+  { "type": "click", "selector": "#reveal-pricing" },
+  { "type": "wait_for", "containsText": "Starter - $29", "timeoutMs": 3000 },
+  { "type": "scroll_to", "selector": "#page-end", "ms": 700 },
+  { "type": "wait", "ms": 700 }
+]
