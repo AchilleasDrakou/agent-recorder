@@ -1,0 +1,10 @@
+[
+  { "type": "wait", "ms": 500 },
+  { "type": "click", "selector": "#email" },
+  { "type": "type", "selector": "#email", "text": "qa+agent@pelianlabs.com", "clear": true },
+  { "type": "type", "selector": "#password", "text": "secret-pass", "clear": true },
+  { "type": "toggle", "selector": "#remember", "value": true },
+  { "type": "click", "selector": "#sign-in" },
+  { "type": "wait_for", "containsText": "signed in successfully", "timeoutMs": 4000 },
+  { "type": "wait", "ms": 900 }
+]

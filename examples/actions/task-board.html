@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agent Proof - Keyboard Actions</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Avenir Next", "Segoe UI", sans-serif;
+        background: linear-gradient(145deg, #fff7ed, #fef3c7);
+        color: #1f2937;
+      }
+      .shell {
+        max-width: 840px;
+        margin: 42px auto;
+        background: rgba(255, 255, 255, 0.92);
+        border-radius: 16px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
+        padding: 24px;
+      }
+      .toolbar {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 1fr auto auto;
+      }
+      input[type="text"] {
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 1rem;
+      }
+      select,
+      button {
+        border-radius: 10px;
+        border: 1px solid #d1d5db;
+        padding: 10px 12px;
+        font-size: 0.95rem;
+      }
+      button {
+        cursor: pointer;
+        border: 0;
+        background: #ea580c;
+        color: #fff;
+      }
+      .options {
+        margin-top: 12px;
+      }
+      ul {
+        margin-top: 20px;
+        padding-left: 20px;
+      }
+      li {
+        margin-bottom: 8px;
+      }
+      #summary {
+        margin-top: 16px;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <h1>Task board</h1>
+      <p>Use keyboard + form interactions to add tasks.</p>
+
+      <div class="toolbar">
+        <input id="task-input" type="text" placeholder="Describe next task" />
+        <select id="priority">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+        <button id="add-task" type="button">Add task</button>
+      </div>
+
+      <div class="options">
+        <input id="notify-team" type="checkbox" />
+        <label for="notify-team">Notify team in Slack</label>
+      </div>
+
+      <ul id="task-list"></ul>
+      <div id="summary">0 tasks</div>
+    </main>
+
+    <script>
+      const input = document.querySelector("#task-input");
+      const priority = document.querySelector("#priority");
+      const list = document.querySelector("#task-list");
+      const summary = document.querySelector("#summary");
+      const notify = document.querySelector("#notify-team");
+
+      const addTask = () => {
+        const value = input.value.trim();
+        if (!value) return;
+        const li = document.createElement("li");
+        li.textContent = `${value} [${priority.value}]${notify.checked ? " +notify" : ""}`;
+        list.appendChild(li);
+        input.value = "";
+        summary.textContent = `${list.children.length} tasks`;
+      };
+
+      document.querySelector("#add-task").addEventListener("click", addTask);
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          addTask();
+        }
+      });
+    </script>
+  </body>
+</html>

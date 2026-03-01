@@ -1,93 +1,113 @@
-# Agent Recorder (Rust)
+# Agent Recorder (Core)
 
-Headless browser video recorder for AI QA workflows. It records a page to MP4 using Chrome DevTools Protocol screencast frames piped into FFmpeg.
+Headless browser video recorder for visual QA.
 
-Started as a Node.js recorder, then we rebuilt the core in Rust for better performance, and added thin agent wrappers (`agent-proof` CLI + local API) on top.
+Core scope:
+- `agent-proof` for agent-driven recordings
+- `cinematic` pace by default
+- visible mouse cursor + click pulse by default
+- actions-based interaction (`click`, `hover`, `type`, `press`, `scroll`, `wait`)
 
-## Install (agent-friendly)
-
-One-liner (local setup):
+## Install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/AchilleasDrakou/agent-recorder/main/install.sh | bash
 ```
 
-This installs:
+Installed commands:
 - `agent-recorder`
 - `agent-proof`
-- `agent-proof-server`
 
-Install script source: `./install.sh`
-
-## Quick start
+## Quick Start
 
 ```bash
-cargo run -- \
+node ./scripts/agent-proof.mjs \
   --url "http://localhost:3000" \
-  --output ./recording.mp4 \
+  --mode after \
+  --name homepage
+```
+
+## Action-Driven Recording
+
+Use a spec file for interactive flows:
+
+```json
+{
+  "url": "https://example.com",
+  "mode": "after",
+  "name": "signup-flow",
+  "profile": "efficient",
+  "pace": "cinematic",
+  "actions": [
+    { "type": "click", "selector": "#email" },
+    { "type": "type", "selector": "#email", "text": "qa@example.com" },
+    { "type": "type", "selector": "#password", "text": "secret-pass" },
+    { "type": "hover", "selector": "button[type='submit']", "hoverMs": 600 },
+    { "type": "click", "selector": "button[type='submit']" },
+    { "type": "wait_for", "containsText": "Welcome" }
+  ]
+}
+```
+
+Run:
+
+```bash
+node ./scripts/agent-proof.mjs --spec ./proof-spec.json
+```
+
+## Defaults
+
+Capture profiles:
+- `default` = `1280x720 @ 10fps`, `jpeg-quality 90`
+- `smooth` = `1280x720 @ 15fps`, `jpeg-quality 82`
+- `efficient` = `960x540 @ 15fps`, `jpeg-quality 78`
+
+Interaction pace:
+- `fast`
+- `normal`
+- `cinematic` (default)
+
+Cursor overlay:
+- enabled by default in live recordings
+- disable with `--cursor-overlay false`
+
+## Live Control (Underlying Runtime)
+
+The current `agent-proof` behavior is powered by live browser control via Puppeteer.
+
+Direct command (optional):
+
+```bash
+node ./scripts/agent-proof-live.mjs \
+  --url "https://example.com" \
+  --actions @./examples/actions/login.actions.json \
+  --pace cinematic \
   --duration 10
+```
+
+## Direct Rust Recorder (Fallback)
+
+```bash
+./target/debug/agent-recorder \
+  --url "http://localhost:3000/page" \
+  --output ./proof.mp4 \
+  --duration 8 \
+  --width 1280 \
+  --height 720 \
+  --fps 10 \
+  --encoder auto \
+  --jpeg-quality 90
 ```
 
 ## Requirements
 
 - Rust 1.89+
+- Node.js 20+
 - Chrome/Chromium
 - FFmpeg
-
-## CLI options
-
-```bash
-cargo run -- \
-  --url <url> \
-  --output <file.mp4> \
-  --duration <seconds> \
-  --width <px> \
-  --height <px> \
-  --fps <n> \
-  --chrome <path> \
-  --ffmpeg <path> \
-  --encoder <name|auto> \
-  --video-bitrate <rate> \
-  --maxrate <rate> \
-  --bufsize <rate> \
-  --jpeg-quality <1-100> \
-  --script <file.js>
-```
-
-- `--url` (required)
-- `--output` default `recording.mp4`
-- `--duration` default `10`
-- `--width` default `1280`
-- `--height` default `720`
-- `--fps` default `10`
-- `--chrome` default `/usr/bin/chromium`
-- `--ffmpeg` default `ffmpeg`
-- `--encoder` default `auto` (macOS prefers `h264_videotoolbox`)
-- `--video-bitrate` optional target bitrate (e.g. `1200k`)
-- `--maxrate` optional max bitrate for hardware encoders
-- `--bufsize` optional encoder buffer size for hardware encoders
-- `--jpeg-quality` default `90`
-- `--script` optional JS evaluated on the page
-- `--ws-endpoint` optional existing CDP websocket endpoint (useful for tests)
 
 ## Testing
 
 ```bash
 cargo test
 ```
-
-Includes an end-to-end integration test with a mocked CDP websocket + fake ffmpeg process.
-
-## Performance (Node vs Rust)
-
-Side-by-side benchmark run with `scripts/benchmark-side-by-side.sh`:
-
-- Runs per implementation: `5`
-- Duration per run: `3s`
-- Resolution: `640x360 @ 8fps`
-- Chrome binary: `Chromium 147.0.7708.0`
-
-| Impl | Cold Start (s) | Avg Total (s) | Avg CPU (s) | Peak RSS (MiB) | Avg Output (KiB) | Avg Effective FPS |
-|---|---:|---:|---:|---:|---:|---:|
-| node | 6.050 | 5.972 | 1.772 | 199.11 | 5.29 | 8.000 |
-| rust | 4.420 | 4.180 | 0.782 | 198.36 | 5.48 | 8.000 |

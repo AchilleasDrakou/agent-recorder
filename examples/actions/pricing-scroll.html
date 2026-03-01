@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agent Proof - Scroll And Reveal</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        background: #f5f7fb;
+        color: #101827;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 22px;
+        border-bottom: 1px solid #dde3ee;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(8px);
+      }
+      .menu button {
+        border: 0;
+        padding: 10px 12px;
+        border-radius: 8px;
+        background: #0f172a;
+        color: #fff;
+        cursor: pointer;
+      }
+      .hero {
+        height: 90vh;
+        display: grid;
+        place-items: center;
+        text-align: center;
+        padding: 0 18px;
+        background: radial-gradient(circle at 20% 20%, #dbeafe, #e2e8f0 56%, #f8fafc);
+      }
+      .hero h1 {
+        font-size: clamp(2rem, 5vw, 3.4rem);
+        margin-bottom: 12px;
+      }
+      .hero p {
+        max-width: 700px;
+        line-height: 1.5;
+      }
+      main {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 28px 18px 60px;
+      }
+      .spacer {
+        height: 55vh;
+      }
+      #reveal-pricing {
+        border: 0;
+        border-radius: 10px;
+        padding: 12px 16px;
+        font-size: 1rem;
+        cursor: pointer;
+        background: #0ea5e9;
+        color: #fff;
+      }
+      #pricing {
+        display: none;
+        margin-top: 18px;
+        gap: 12px;
+      }
+      #pricing.visible {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+      .tier {
+        border-radius: 12px;
+        border: 1px solid #cbd5e1;
+        padding: 14px;
+        background: #fff;
+      }
+      .tier h3 {
+        margin-top: 0;
+      }
+      footer {
+        margin-top: 40px;
+        text-align: center;
+        color: #64748b;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>Pelian Example</strong>
+      <div class="menu">
+        <button id="menu-trigger">Product Menu</button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div>
+        <h1>Launch faster with proof-ready agents</h1>
+        <p>Scroll down to reveal pricing and verify that CTA interactions are captured in video proofs.</p>
+      </div>
+    </section>
+
+    <main>
+      <div class="spacer"></div>
+      <button id="reveal-pricing">Reveal Pricing</button>
+      <div id="pricing">
+        <article class="tier">
+          <h3>Starter - $29</h3>
+          <p>Ideal for a single product team.</p>
+        </article>
+        <article class="tier">
+          <h3>Growth - $99</h3>
+          <p>Cross-functional automation and visual QA.</p>
+        </article>
+        <article class="tier">
+          <h3>Scale - $249</h3>
+          <p>Enterprise controls and advanced observability.</p>
+        </article>
+      </div>
+      <footer id="page-end">End of example page</footer>
+    </main>
+
+    <script>
+      document.querySelector("#reveal-pricing").addEventListener("click", () => {
+        document.querySelector("#pricing").classList.add("visible");
+      });
+      document.querySelector("#menu-trigger").addEventListener("mouseenter", () => {
+        document.querySelector("#menu-trigger").textContent = "Product Menu (hovered)";
+      });
+    </script>
+  </body>
+</html>
