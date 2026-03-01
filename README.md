@@ -91,6 +91,22 @@ node ./scripts/agent-proof-live.mjs \
 
 This mode executes actions with Puppeteer in real time and records the same session as MP4.
 
+## AutoPlanner (Experimental)
+
+AutoPlanner is available but intentionally gated as experimental.
+
+```bash
+node ./scripts/agent-proof-autoplan.mjs \
+  --spec ./examples/actions/autoplan-login.spec.json \
+  --autoplan-experimental true
+```
+
+You can also enable it via environment variable:
+
+```bash
+AGENT_PROOF_ENABLE_AUTOPLAN=1 node ./scripts/agent-proof-autoplan.mjs --spec ./autoplan-spec.json
+```
+
 ## Requirements
 
 - Rust 1.89+

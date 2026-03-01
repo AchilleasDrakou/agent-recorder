@@ -1,0 +1,11 @@
+{
+  "url": "file:///Users/achilleasdrakou/Documents/GitHub/agent-recorder/examples/actions/login-form.html",
+  "mode": "after",
+  "name": "branch-c-autoplan-login",
+  "profile": "efficient",
+  "duration": 9,
+  "goal": "Sign in with email and password and confirm success message",
+  "assertions": [
+    { "type": "text_visible", "value": "Signed in successfully" }
+  ]
+}
