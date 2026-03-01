@@ -180,6 +180,16 @@ async function pageWsEndpointForUrl(port, url, timeoutMs = 10000) {
 
 function waitForChild(child) {
   return new Promise((resolveRun, rejectRun) => {
+    if (child.exitCode !== null || child.signalCode !== null) {
+      if (child.exitCode === 0) {
+        resolveRun({ code: child.exitCode, signal: child.signalCode });
+        return;
+      }
+      rejectRun(
+        new Error(`child exited with code=${child.exitCode ?? "null"} signal=${child.signalCode ?? "none"}`)
+      );
+      return;
+    }
     child.once("error", rejectRun);
     child.once("close", (code, signal) => {
       if (code === 0) {
@@ -728,7 +738,6 @@ async function main() {
   const url = pick(values.url, spec.url);
   if (!url) throw new Error("Missing url");
   const actions = await loadActions(values.actions, spec.actions);
-  if (actions.length === 0) throw new Error("No actions provided");
 
   const profileName = String(pick(values.profile, spec.profile, "efficient")).toLowerCase();
   const profile = CAPTURE_PROFILES[profileName];
@@ -781,7 +790,7 @@ async function main() {
 
     const pageWsEndpoint = await pageWsEndpointForUrl(port, page.url());
     const recorderArgs = [
-      "./scripts/agent-proof.mjs",
+      "./scripts/agent-capture.mjs",
       "--url", String(url),
       "--mode", mode,
       "--name", `${name}-live`,

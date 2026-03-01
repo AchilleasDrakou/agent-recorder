@@ -30,7 +30,6 @@ Options:
 Installed commands:
   agent-recorder
   agent-proof
-  agent-proof-server
 USAGE
 }
 
@@ -241,12 +240,6 @@ exec node "${REPO_DIR}/scripts/agent-proof.mjs" "\$@"
 EOF
   chmod +x "${BIN_DIR}/agent-proof"
 
-  cat > "${BIN_DIR}/agent-proof-server" <<EOF
-#!/usr/bin/env bash
-set -euo pipefail
-exec node "${REPO_DIR}/scripts/agent-proof-server.mjs" "\$@"
-EOF
-  chmod +x "${BIN_DIR}/agent-proof-server"
 }
 
 print_post_install() {
@@ -258,7 +251,6 @@ print_post_install() {
   echo "Commands:"
   echo "  agent-recorder"
   echo "  agent-proof"
-  echo "  agent-proof-server"
   echo
   echo "Suggested first run:"
   echo "  agent-proof --url \"http://localhost:3000\" --mode after --name smoke"
@@ -287,7 +279,7 @@ main() {
       echo "node is required but not installed." >&2
       exit 1
     fi
-    warn "Node.js is required for agent wrappers (agent-proof, agent-proof-server)."
+    warn "Node.js is required for agent wrapper (agent-proof)."
     warn "Install Node.js 20+ and re-run."
     exit 1
   fi
