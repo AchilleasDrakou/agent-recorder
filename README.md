@@ -34,7 +34,8 @@ Agent-friendly wrapper:
 node ./scripts/agent-proof.mjs \
   --url "http://localhost:3000" \
   --mode after \
-  --name homepage
+  --name homepage \
+  --pace cinematic
 ```
 
 ## Action-driven recordings (no custom script required)
@@ -78,6 +79,11 @@ FPS/performance profiles:
 - `smooth` = `1280x720 @ 15fps`, `jpeg-quality 82`
 - `efficient` = `960x540 @ 15fps`, `jpeg-quality 78`
 
+Interaction pace presets:
+- `fast` = low delay, useful for smoke checks
+- `normal` = balanced, smoother and human-like
+- `cinematic` = slower, more watchable demos (default)
+
 ## Live Browser Control Mode (Puppeteer)
 
 For complex multi-step browsing, use live control (external browser controller + recorder attached to same page via CDP):
@@ -86,10 +92,13 @@ For complex multi-step browsing, use live control (external browser controller +
 node ./scripts/agent-proof-live.mjs \
   --url "https://example.com" \
   --actions @./examples/actions/login.actions.json \
+  --pace cinematic \
   --duration 10
 ```
 
 This mode executes actions with Puppeteer in real time and records the same session as MP4.
+It shows a high-contrast virtual cursor + click ripple overlay by default in recordings.
+Disable with `--cursor-overlay false` if needed.
 
 ## AutoPlanner (Experimental)
 

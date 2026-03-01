@@ -10,6 +10,12 @@ const CAPTURE_PROFILES = {
   efficient: { width: 960, height: 540, fps: 15, jpegQuality: 78 },
 };
 
+const ACTION_PACE_PRESETS = {
+  fast: { startDelayMs: 180, stepDelayMs: 120, typingDelayMs: 20, pollMs: 60, defaultTimeoutMs: 4500 },
+  normal: { startDelayMs: 420, stepDelayMs: 260, typingDelayMs: 45, pollMs: 80, defaultTimeoutMs: 7000 },
+  cinematic: { startDelayMs: 700, stepDelayMs: 420, typingDelayMs: 70, pollMs: 100, defaultTimeoutMs: 9000 },
+};
+
 const SUPPORTED_ACTIONS = new Set([
   "wait",
   "wait_for",
@@ -439,6 +445,16 @@ function parseProfile(rawValue) {
   return value;
 }
 
+function parseActionPace(rawValue) {
+  const value = String(rawValue ?? "normal").toLowerCase().trim();
+  if (!ACTION_PACE_PRESETS[value]) {
+    throw new Error(
+      `pace must be one of: ${Object.keys(ACTION_PACE_PRESETS).join(", ")}. Received "${rawValue}"`
+    );
+  }
+  return value;
+}
+
 async function main() {
   const { values } = parseArgs({
     options: {
@@ -451,6 +467,7 @@ async function main() {
       output: { type: "string" },
       "out-dir": { type: "string", default: "./proofs" },
       profile: { type: "string" }, // default|smooth|efficient
+      pace: { type: "string" }, // fast|normal|cinematic
       duration: { type: "string" },
       width: { type: "string" },
       height: { type: "string" },
@@ -474,6 +491,7 @@ async function main() {
   node scripts/agent-proof.mjs --url <url> --mode before|after --name <slug>
   node scripts/agent-proof.mjs --spec ./proof-spec.json
   node scripts/agent-proof.mjs --spec ./proof-spec.json --profile efficient
+  node scripts/agent-proof.mjs --spec ./proof-spec.json --pace cinematic
   node scripts/agent-proof.mjs --url <url> --actions @./actions.json
 
 Writes:
@@ -499,14 +517,16 @@ Writes:
   const outDir = resolve(String(pick(values["out-dir"], spec.outDir, "./proofs")));
   const profileName = parseProfile(pick(values.profile, spec.profile, "default"));
   const profile = CAPTURE_PROFILES[profileName];
+  const paceName = parseActionPace(pick(values.pace, spec.pace, "cinematic"));
+  const pacePreset = ACTION_PACE_PRESETS[paceName];
   const actions = await loadActions(values.actions, spec.actions);
   const actionConfig = {
     continueOnError: boolArg(pick(spec.actionConfig?.continueOnError, true), true),
-    startDelayMs: parseIntegerArg("actionConfig.startDelayMs", pick(spec.actionConfig?.startDelayMs, "250"), { min: 0, max: 60000 }),
-    stepDelayMs: parseIntegerArg("actionConfig.stepDelayMs", pick(spec.actionConfig?.stepDelayMs, "180"), { min: 0, max: 60000 }),
-    typingDelayMs: parseIntegerArg("actionConfig.typingDelayMs", pick(spec.actionConfig?.typingDelayMs, "25"), { min: 0, max: 1000 }),
-    pollMs: parseIntegerArg("actionConfig.pollMs", pick(spec.actionConfig?.pollMs, "80"), { min: 10, max: 2000 }),
-    defaultTimeoutMs: parseIntegerArg("actionConfig.defaultTimeoutMs", pick(spec.actionConfig?.defaultTimeoutMs, "5000"), { min: 50, max: 120000 }),
+    startDelayMs: parseIntegerArg("actionConfig.startDelayMs", pick(spec.actionConfig?.startDelayMs, String(pacePreset.startDelayMs)), { min: 0, max: 60000 }),
+    stepDelayMs: parseIntegerArg("actionConfig.stepDelayMs", pick(spec.actionConfig?.stepDelayMs, String(pacePreset.stepDelayMs)), { min: 0, max: 60000 }),
+    typingDelayMs: parseIntegerArg("actionConfig.typingDelayMs", pick(spec.actionConfig?.typingDelayMs, String(pacePreset.typingDelayMs)), { min: 0, max: 1000 }),
+    pollMs: parseIntegerArg("actionConfig.pollMs", pick(spec.actionConfig?.pollMs, String(pacePreset.pollMs)), { min: 10, max: 2000 }),
+    defaultTimeoutMs: parseIntegerArg("actionConfig.defaultTimeoutMs", pick(spec.actionConfig?.defaultTimeoutMs, String(pacePreset.defaultTimeoutMs)), { min: 50, max: 120000 }),
   };
 
   const duration = parseIntegerArg("duration", pick(values.duration, spec.duration, "8"), { min: 1, max: 7200 });
@@ -604,6 +624,7 @@ Writes:
     goal,
     assertions,
     profile: profileName,
+    pace: paceName,
     actions,
     actionConfig,
     actionScript: generatedActionScript || null,
