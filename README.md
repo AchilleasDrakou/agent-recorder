@@ -78,6 +78,19 @@ FPS/performance profiles:
 - `smooth` = `1280x720 @ 15fps`, `jpeg-quality 82`
 - `efficient` = `960x540 @ 15fps`, `jpeg-quality 78`
 
+## Live Browser Control Mode (Puppeteer)
+
+For complex multi-step browsing, use live control (external browser controller + recorder attached to same page via CDP):
+
+```bash
+node ./scripts/agent-proof-live.mjs \
+  --url "https://example.com" \
+  --actions @./examples/actions/login.actions.json \
+  --duration 10
+```
+
+This mode executes actions with Puppeteer in real time and records the same session as MP4.
+
 ## Requirements
 
 - Rust 1.89+
